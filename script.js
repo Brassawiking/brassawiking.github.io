@@ -10,7 +10,30 @@ let config = {
   hoverClasses: null,
   hoverTitle: '',
   
-  n: 1000,
+  user: {
+    firstName: 'Johan',
+    lastName: 'Ludvigsson'
+  },
+  updateUser () {
+    this.user = {
+      firstName: 'Lisa',
+      lastName: 'Simpson'
+    }
+    
+    this.user.firstName = 'Homer'
+  },
+  
+  rows: [null],
+  rowCount: 1,
+  setRows (n) {
+    this.rows = new Array(Number(n))
+    this.rowCount = this.rows.length
+  },
+  items: [
+    'Apple',
+    'Banana',
+    'Clementine'
+  ],
   
   hover (hovering) {
     if (hovering) {
@@ -25,7 +48,13 @@ let config = {
       }
     }
   },
-
+  
+  massToggle () {
+    this.setRows(1000)
+    //setTimeout(_ => {
+      this.setRows(1)
+    //}, 100)
+  }
 }
 let template = `
   <style>
@@ -58,13 +87,36 @@ let template = `
     </span>
   </div>
   <p>
-    Number of rows: <br/>
-    <input type="number" .value="n" @input.target.value="n" />
+    <span .innerHTML="user.firstName"></span>
+    <span .innerHTML="user.lastName"></span>
+    <input .value="user.firstName"
+           @input.target.value="user.firstName" />
+           
+    <button @click="updateUser">Update</button>
   </p>
-  <div .repeat="n">
+  <p>
+    Number of rows: (<span .innerHTML="rowCount"></span>)<br/>
+    <input .value="rowCount" 
+           @input.target.value="setRows"
+           type="number" />
+  </p>
+  <table .repeat="items">
+    <template>
+      <tr>
+        <td>
+          <span .innerHTML="items.1"></span>
+          <span .innerHTML="x"></span>
+        </td>
+      </tr>
+    </template>
+  </table>
+  
+  <button @click="massToggle">Mass toggle</button>
+  
+  <div .repeat="rows">
     <template>
       <input .value="x" 
-             @input.target.value="x" />
+             @input.target.value="x"/>
       <br/>
     </template>
   </div>
@@ -118,23 +170,35 @@ function compile (element, data, batch) {
     },
     repeat: {
       set (value) {
+        let token = { canceled: false }
         let templates = []
+        if (this.__repeatToken__) {
+          this.__repeatToken__.canceled = true
+        }
+        this.__repeatToken__ = token
+        
         ;[].slice.call(this.childNodes).forEach(x => {
           if (x.tagName !== 'TEMPLATE') {
-            batch(_ => x.remove())
+            batch(_ => {
+              if (token.canceled) {
+                return
+              }
+              x.remove()
+            })
           } else {
             templates.push(x)
           }
         })
         
+        
         // Ensure loop terminates
-        for (let i = 0; i < value ; ++i) {
+        for (let i = 0; i < value.length ; ++i) {
           batch(_ => {
+            if (token.canceled) {
+              return
+            }
             templates.forEach(t => {
-              let node = document.importNode(t.content, true)
-              ;[].slice.call(node.children)
-                 .forEach(x => x.title = i)
-              
+              let node = document.importNode(t.content, true)              
               ;[].slice.call(node.querySelectorAll('*'))
                  .forEach(x => compile(x, data, batch))
                  
@@ -156,26 +220,34 @@ function compile (element, data, batch) {
       let lastProp
       
       for (let i = 0 ; i < props.length; ++i) {
-        lastProp = getPropertyName(obj, props[i]) // Does not work well for proxies
+        lastProp = getPropertyName(obj, props[i]) // Does not work well for proxies (non-emumerable properties)
         if (i < props.length - 1) {
           obj = obj[lastProp]
         }
       }
               
       // Abort if data binding is a function?
-      obj[lastProp] = data[binding] 
-      data.__notifier__.addEventListener(binding, child[`__${jsAttr.name}_$notifier__`] = e => {
-        batch(_ => obj[lastProp] = data[binding])
-      })
+      obj[lastProp] = getValue(data, binding)
+      let bindingDependencies = binding.split('.')
+      for (let i = 0; i < bindingDependencies.length; ++i) {
+        let bindingDependency = bindingDependencies.slice(0, i+1).join('.')
+        let updateRequest
+        data.__notifier__.addEventListener(bindingDependency, child[`__${bindingDependency}_$notifier__`] = e => {
+          cancelAnimationFrame(updateRequest)
+          updateRequest = requestAnimationFrame(_ => {
+            batch(_ => obj[lastProp] = getValue(data, binding))
+          })
+        })
+      }
     }
     
     if (type === '@') {
       let parts = jsAttr.name.substr(1).split('.')
       let event = parts[0]
-      let props = parts.slice(1)
+      let eventProps = parts.slice(1)
       let binding = jsAttr.value
       
-      child.addEventListener(event, child[`__${jsAttr.name}_@{event}__`] = e => {
+      child.addEventListener(event, child[`__${binding}_@{event}__`] = e => {
         e.$data = data
         e.$self = data[binding]
         e.$null = null
@@ -186,12 +258,19 @@ function compile (element, data, batch) {
         })
 
         let value = e
-        props.forEach(prop => {
+        eventProps.forEach(prop => {
           value = value[getPropertyName(value, prop)]
         })
         
-        let descriptor = Object.getOwnPropertyDescriptor(data, binding)
-        ;(descriptor.value || descriptor.set).call(data, value)
+        let bindingObj = data
+        let bindingProps = binding.split('.')
+        let lastBindingProp = bindingProps[bindingProps.length -1]
+        for (let i = 0 ; i < bindingProps.length - 1 ; ++i) {
+          bindingObj = bindingObj[bindingProps[i]]
+        }
+        
+        let descriptor = Object.getOwnPropertyDescriptor(bindingObj, lastBindingProp)
+        ;(descriptor.value || descriptor.set).call(bindingObj, value)
       })
     }
   })
@@ -202,45 +281,77 @@ function createData (dataConfig) {
   let notifier = document.createElement('notifier')
   
   Object.keys(dataConfig).forEach(key => {
-    let value = dataConfig[key]
-    
-    if (typeof value === 'function') {
-      Object.defineProperty(data, key, {
-        value (payload) {
-          let result = value.call(this, payload)
-          notifier.dispatchEvent(new CustomEvent(key))
-          return result
-        }
-      })
-    } else {
-      Object.defineProperty(data, key, {
-        get () { return value },
-        set (newValue) {
-          value = newValue
-          notifier.dispatchEvent(new CustomEvent(key))
-        }
-      })
-    }
+    createProperty(data, key, dataConfig[key], notifier)
   })
     
   data.__notifier__ = notifier
   return data
 }
 
+function createProperty (obj, prop, rawValue, notifier, parentPropPath) {
+  let propPath = (parentPropPath ? parentPropPath + '.' : '') + prop
+  let value = rawValue
+    
+  if (typeof rawValue === 'object' && rawValue != null && !Array.isArray(rawValue)) {
+    value = {}
+    Object.keys(rawValue).forEach(key => {
+      createProperty(value, key, rawValue[key], notifier, propPath)
+    })    
+  } 
+  
+  if (typeof rawValue === 'function') {
+    Object.defineProperty(obj, prop, { value })
+  } else {
+    Object.defineProperty(obj, prop, {
+      get () { return value },
+      set (newValue) {
+        if (typeof newValue === 'object' && rawValue != null && !Array.isArray(newValue)) {
+          value = {}
+          Object.keys(newValue).forEach(key => {
+            createProperty(value, key, newValue[key], notifier, propPath)
+          })    
+        } else {
+          value = newValue
+        }
+        notifier.dispatchEvent(new CustomEvent(propPath))
+      }
+    })
+  }
+}
+
 function createBatcher () {
+  let frames
+  let startTime
+  let totalTasksDone
   const batch = []
-  requestAnimationFrame(function process (frameStart) {
+  const process = function(frameStart) {
     let tasksDone = 0
     let batchLength = batch.length
     
-    while (performance.now() - frameStart < 10 && tasksDone < batchLength) {
+    while (performance.now() - frameStart < 30 && tasksDone < batchLength) {
       batch[tasksDone++]()
     }
     batch.splice(0, tasksDone)
     
-    requestAnimationFrame(process)
-  })
-  return task => batch.push(task)  
+    frames++
+    totalTasksDone += tasksDone
+    
+    if (batch.length) {
+      requestAnimationFrame(process)
+    } else {
+      let totalTime = performance.now() - startTime
+      console.log(`DONE: ${totalTasksDone} tasks, ${Math.round(totalTime)}ms, ${frames} frames, ${Math.round(totalTasksDone/frames)} task/frame`)
+    } 
+  }
+  return task => {
+    if (!batch.length) {
+      frames = 0
+      totalTasksDone = 0
+      startTime = performance.now()
+      requestAnimationFrame(process)
+    }
+    batch.push(task)
+  }  
 }
 
 function getPropertyName (obj, lowerCaseProp) {
@@ -254,5 +365,13 @@ function getPropertyName (obj, lowerCaseProp) {
     }
     obj = Object.getPrototypeOf(obj)
   }
-  return lowerCaseProp; // Should be null
+  return lowerCaseProp; // Should be null?
+}
+
+function getValue (obj, propertyPath) {
+  let result = obj
+  propertyPath.split('.').forEach(x => {
+    result = result[x]
+  })
+  return result
 }
