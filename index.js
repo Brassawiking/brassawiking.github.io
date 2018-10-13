@@ -16,10 +16,16 @@ const TITLES = [
   'Brassawiking | About'
 ]
 
+const canvas = document.createElement('canvas');
+const ctx = canvas.getContext('2d');
+canvas.width = canvas.height = 16
+ctx.lineWidth = 2
+ctx.strokeStyle = '#333'
 
 let app = init(
   document.documentElement, 
   {
+    favicon: '',
     documentTitle: TITLES[0],
     bg: COLORS[0],
     pageOffset: '',
@@ -30,7 +36,13 @@ let app = init(
       this.pageOffset = `translateX(${-this.pageIndex * 100}vw)`
       this.documentTitle = TITLES[this.pageIndex]
       this.bg = COLORS[this.pageIndex]
+      
+      ctx.fillStyle = this.bg
+      ctx.fillRect(0, 0, 16, 16)
+      ctx.strokeRect(0, 0, 16, 16)
+      this.favicon = canvas.toDataURL("image/x-icon")
     }
   }
 )
 
+app.step(0)
