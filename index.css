@@ -5,10 +5,9 @@ body {
   margin: 0;
   overflow: hidden;
   transition-duration: 750ms;
-  font-family: Arial;
-  font-weight: 500;
   color: #333;
   font-size: 2vw;
+  font-family: Oswald, Arial;
 }
 
 body {
@@ -18,7 +17,7 @@ body {
 
 h1 {
   text-align: right;
-  border-bottom: 0.1vw solid;
+  border-bottom: 0.2vw solid;
   line-height: 4vw;
   font-size: 3vw;
 }
@@ -28,8 +27,9 @@ a:visited {
   display: inline-block;
   background: #333;
   color: #fff;
-  padding: 0 10px;
-  border-radius: 10px;
+  padding: 0 1vw;
+  border-radius: 1vw;
+  line-height: 5vw;
 }
 
 .pages {
@@ -94,7 +94,6 @@ a:visited {
   border-radius: 100%;
   margin: 10px;
   color: #333;
-
 }
 
 .pageIndicators > .active {
