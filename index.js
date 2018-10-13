@@ -1,4 +1,4 @@
-import { init } from './_framework.js'
+import { init } from './framework.js'
 
 const PAGES = document.querySelector('.pages').children.length
 const COLORS = [

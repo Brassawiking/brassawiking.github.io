@@ -1,4 +1,4 @@
-import { init } from './_framework.js'
+import { init } from './framework.js'
 
 let config = {
   x: 10,
@@ -12,8 +12,8 @@ let config = {
   hoverTitle: '',
   
   user: {
-    firstName: 'Johan',
-    lastName: 'Ludvigsson'
+    firstName: 'Max',
+    lastName: 'Anderson'
   },
   updateUser () {
     this.user = {
