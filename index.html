@@ -3,15 +3,65 @@
 <head>
   <title>Brassawiking</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
-  <style>
-    app-main {
-      display: block;
-    }
-  </style>
+  <link rel="stylesheet" type="text/css" href="index.css"/>
 </head>
-<body>
-  <app-main></app-main>
-  <script src="script.js"></script>
+<body .style.background="bg">
+
+  <div class="pages" .style.transform="pageOffset">
+    <section>
+      <h1>Showcase by Brassawiking</h1>
+      <p>
+        Greetings Earthlings
+      </p>
+    </section>
+    <section>
+      <h1>Art</h1>
+      <p>
+        Drawings
+      </p>
+    </section>
+    <section>
+      <h1>Ludum Dare</h1>
+      <p>
+        Compo stuffz
+      </p>
+    </section>
+    <section>
+      <h1>Projects</h1>
+      <p>
+        <a href="http://brassawiking.github.io/GameSystemJs/">GameSystemJs</a>
+        - Git gud hub
+      </p>
+    </section>
+    <section>
+      <h1>About</h1>
+      <p>
+        Curiosa
+      </p>
+    </section>
+  </div>
+
+
+  <button @click.$number.-1="step" 
+          class="prevButton"
+          aria-hidden="true">
+    Prev page
+  <button>
+  <button @click.$number.1="step"
+          class="nextButton"
+          aria-hidden="true">
+    Next page
+  <button>
+  
+  <div class="pageIndicators"
+       aria-hidden="true">
+    <div class="active"></div>
+    <div></div>
+    <div></div>
+    <div></div>
+    <div></div>
+  </div>
+  
+  <script type="module" src="index.js"></script>
 </body>
 </html>
-

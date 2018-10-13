@@ -1,0 +1,92 @@
+html,
+body {
+  height: 100vh;
+  width: 100vw;
+  margin: 0;
+  overflow: hidden;
+  transition-duration: 750ms;
+  font-family: Arial;
+  font-weight: 500;
+  color: #333;
+}
+
+body {
+  transition-duration: 750ms;
+}
+
+h1 {
+  text-align: right;
+  border-bottom: 1px solid;
+}
+
+a,
+a:visited {
+  display: inline-block;
+  background: #333;
+  color: #fff;
+  padding: 0 10px;
+  border-radius: 10px;
+}
+
+.pages {
+  display: flex;
+  transition-duration: 750ms;
+}
+
+.pages > * {
+  height: 100vh;
+  flex: 0 0 100vw;
+  box-sizing: border-box;
+  padding: 5vh 10vw;
+  overflow: auto;
+}
+
+.prevButton,
+.nextButton {
+  position: fixed;
+  top: 50vh;
+  font-size: 0;
+  border: 0.5vw solid;
+  width: 3.5vw;
+  height: 4vw;
+  color: inherit;
+}
+
+.prevButton:hover,
+.nextButton:hover {
+  background: #fff;
+  cursor: pointer;
+}
+
+.prevButton {
+  left: 2vw;
+  border-radius: 100% 0 0 100%;  
+}
+
+.nextButton {
+  right: 2vw;
+  border-radius: 0 100% 100% 0;  
+}
+
+.pageIndicators {
+  position: fixed;
+  bottom: 1%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  color: inherit;
+}
+
+.pageIndicators > * {
+  border: 0.5vw solid;
+  width: 1.5vw;
+  height: 1.5vw;
+  border-radius: 100%;
+  margin: 10px;
+  color: #333;
+
+}
+
+.pageIndicators > .active {
+  background: #fff;
+}

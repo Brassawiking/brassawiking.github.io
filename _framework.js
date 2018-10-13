@@ -1,143 +1,5 @@
-let element = document.querySelector('app-main')
-let config = {
-  x: 10,
-  y: true,
-  color: 'red',
-  showA: true,
-  mouseX: 0,
-  mouseY: 0,
-  
-  hoverClasses: null,
-  hoverTitle: '',
-  
-  user: {
-    firstName: 'Johan',
-    lastName: 'Ludvigsson'
-  },
-  updateUser () {
-    this.user = {
-      firstName: 'Lisa',
-      lastName: 'Simpson'
-    }
-    
-    this.user.firstName = 'Homer'
-  },
-  
-  rows: [null],
-  rowCount: 1,
-  setRows (n) {
-    this.rows = new Array(Number(n))
-    this.rowCount = this.rows.length
-  },
-  items: [
-    'Apple',
-    'Banana',
-    'Clementine'
-  ],
-  
-  hover (hovering) {
-    if (hovering) {
-      this.hoverTitle = 'Yoooo, here comes ze title!'
-      this.hoverClasses = {
-        hoverX: true
-      }
-    } else {
-      this.hoverTitle = ''
-      this.hoverClasses = {
-        hoverX: false
-      }
-    }
-  },
-  
-  massToggle () {
-    this.setRows(1000)
-    //setTimeout(_ => {
-      this.setRows(1)
-    //}, 100)
-  }
-}
-let template = `
-  <style>
-    .hoverX {
-      outline: 3px solid gold;
-    }
-  </style>
-  <div .class="hoverClasses"
-       .title="hoverTitle"
-       @mouseenter.$true="hover"
-       @mouseleave.$false="hover"
-       @click.offsetX="mouseX" 
-       @click.offsetY="mouseY"
-       @mousemove.offsetX="x"
-       @mousemove.offsetY="mouseY">
-    <h1 .style.color="color">
-      Hello! 
-      <span .innerHTML="mouseX"></span>
-      <span .innerHTML="mouseY"></span>
-    </h1>
-    <input .value="color" 
-           @input.target.value="color" />
-    <input .value="x" 
-           .checked="showA"
-           @change.target.checked="showA"
-           type="checkbox" />
-    Toggle =>
-    <span .innerHTML="x" 
-          .show="showA">
-    </span>
-  </div>
-  <p>
-    <span .innerHTML="user.firstName"></span>
-    <span .innerHTML="user.lastName"></span>
-    <input .value="user.firstName"
-           @input.target.value="user.firstName" />
-           
-    <button @click="updateUser">Update</button>
-  </p>
-  <p>
-    Number of rows: (<span .innerHTML="rowCount"></span>)<br/>
-    <input .value="rowCount" 
-           @input.target.value="setRows"
-           type="number" />
-  </p>
-  <table .repeat="items">
-    <template>
-      <tr>
-        <td>
-          <span .innerHTML="items.1"></span>
-          <span .innerHTML="x"></span>
-        </td>
-      </tr>
-    </template>
-  </table>
-  
-  <button @click="massToggle">Mass toggle</button>
-  
-  <div .repeat="rows">
-    <template>
-      <input .value="x" 
-             @input.target.value="x"/>
-      <br/>
-    </template>
-  </div>
-`
-
-let app = init(element, config, template)
-
-setTimeout(_ => {
-  app.x = 123
-  app.y = false
-}, 2000)
-
-let externalButton = document.body.insertBefore(document.createElement('button'), element)
-externalButton.innerHTML = 'External increment'
-externalButton.addEventListener('click', e => {
-  app.x++
-})
-
-function init (element, config, template) {
+export const init = function (element, config) {
   let data = createData(config)
-  element.innerHTML = template
     
   const batch = createBatcher()
   ;[].slice.call(element.querySelectorAll('*'))
@@ -151,6 +13,12 @@ function compile (element, data, batch) {
   let jsAttrs = [].filter.call(child.attributes, x => x.name[0] === '.' || x.name[0] === '@')
   
   Object.defineProperties(child, {
+    $document: {
+      get () { return document },
+    },
+    $window: {
+      get () { return window },
+    },
     show: {
       get () { return !this.hidden },
       set (value) { this.hidden = !value },
@@ -256,6 +124,10 @@ function compile (element, data, batch) {
         e.$string = new Proxy({}, {
           get: (obj, prop) => prop === '$empty' ? '' : prop
         })
+        e.$number = new Proxy({}, {
+          get: (obj, prop) => Number(prop)
+        })
+
 
         let value = e
         eventProps.forEach(prop => {
@@ -322,6 +194,8 @@ function createProperty (obj, prop, rawValue, notifier, parentPropPath) {
 function createBatcher () {
   let frames
   let startTime
+  let lowestTasksDone
+  let highestTasksDone
   let totalTasksDone
   const batch = []
   const process = function(frameStart) {
@@ -335,17 +209,30 @@ function createBatcher () {
     
     frames++
     totalTasksDone += tasksDone
+    lowestTasksDone = Math.min(tasksDone, lowestTasksDone)
+    highestTasksDone = Math.max(tasksDone, highestTasksDone)
+    
     
     if (batch.length) {
       requestAnimationFrame(process)
     } else {
       let totalTime = performance.now() - startTime
-      console.log(`DONE: ${totalTasksDone} tasks, ${Math.round(totalTime)}ms, ${frames} frames, ${Math.round(totalTasksDone/frames)} task/frame`)
+      let taskAverage = Math.round(totalTasksDone/frames)
+      
+      false && console.log(
+        'BATCH DONE: ' +
+        `${totalTasksDone}tasks, ` +
+        `${Math.round(totalTime)}ms, ` +
+        `${frames} frame(s), ` +
+        `${taskAverage} (${lowestTasksDone}/${highestTasksDone}) task/frame`
+      )
     } 
   }
   return task => {
     if (!batch.length) {
       frames = 0
+      lowestTasksDone = Infinity
+      highestTasksDone = 0
       totalTasksDone = 0
       startTime = performance.now()
       requestAnimationFrame(process)
